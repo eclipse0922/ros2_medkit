@@ -1873,6 +1873,10 @@ class TestROS2MedkitGatewayIntegration(unittest.TestCase):
         # Verify faults endpoints are listed
         self.assertIn('endpoints', data)
         self.assertIn(
+            'GET /api/v1/faults',
+            data['endpoints']
+        )
+        self.assertIn(
             'GET /api/v1/components/{component_id}/faults',
             data['endpoints']
         )
@@ -1952,3 +1956,83 @@ class TestROS2MedkitGatewayIntegration(unittest.TestCase):
         self.assertEqual(data['fault_code'], 'NONEXISTENT_FAULT')
 
         print('✓ Get nonexistent fault test passed')
+
+    def test_59_list_all_faults_globally(self):
+        """
+        Test GET /faults returns all faults across the system.
+
+        This is a convenience API for dashboards and monitoring tools
+        that need a complete system health view without iterating over components.
+        """
+        response = requests.get(
+            f'{self.BASE_URL}/faults',
+            timeout=10
+        )
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertIn('faults', data)
+        self.assertIsInstance(data['faults'], list)
+        self.assertIn('count', data)
+        self.assertIsInstance(data['count'], int)
+        self.assertEqual(data['count'], len(data['faults']))
+
+        print(f'✓ List all faults globally test passed: {data["count"]} faults')
+
+    def test_60_list_all_faults_with_status_filter(self):
+        """Test GET /faults?status={status} filters faults by status."""
+        # Test with status=all
+        response = requests.get(
+            f'{self.BASE_URL}/faults?status=all',
+            timeout=10
+        )
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        self.assertIn('faults', data)
+        self.assertIn('count', data)
+
+        # Test other valid status values
+        for status in ['pending', 'confirmed', 'cleared']:
+            response = requests.get(
+                f'{self.BASE_URL}/faults?status={status}',
+                timeout=10
+            )
+            self.assertEqual(response.status_code, 200)
+
+        print(f'✓ List all faults with status filter test passed: {data["count"]} faults')
+
+    def test_61_list_faults_invalid_status_returns_400(self):
+        """Test GET /faults?status=invalid returns 400 Bad Request."""
+        response = requests.get(
+            f'{self.BASE_URL}/faults?status=invalid_status',
+            timeout=10
+        )
+        self.assertEqual(response.status_code, 400)
+
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Invalid status parameter')
+        self.assertIn('details', data)
+        self.assertIn('pending', data['details'])  # Should mention valid values
+        self.assertIn('parameter', data)
+        self.assertEqual(data['parameter'], 'status')
+        self.assertIn('value', data)
+        self.assertEqual(data['value'], 'invalid_status')
+
+        print('✓ List faults invalid status returns 400 test passed')
+
+    def test_62_component_faults_invalid_status_returns_400(self):
+        """Test GET /components/{id}/faults?status=invalid returns 400."""
+        response = requests.get(
+            f'{self.BASE_URL}/components/temp_sensor/faults?status=bogus',
+            timeout=10
+        )
+        self.assertEqual(response.status_code, 400)
+
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Invalid status parameter')
+        self.assertIn('component_id', data)
+
+        print('✓ Component faults invalid status returns 400 test passed')
