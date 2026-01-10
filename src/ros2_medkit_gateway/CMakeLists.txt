@@ -37,8 +37,12 @@ find_package(ros2_medkit_msgs REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(cpp_httplib REQUIRED IMPORTED_TARGET cpp-httplib)
 
-# Find OpenSSL (required by jwt-cpp for RS256)
+# Find OpenSSL (required by jwt-cpp for RS256 and optional TLS support)
 find_package(OpenSSL REQUIRED)
+
+# Enable OpenSSL support for cpp-httplib SSLServer
+# This enables the httplib::SSLServer class for HTTPS support
+add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
 
 # Fetch header-only libraries
 include(FetchContent)
@@ -98,7 +102,6 @@ include_directories(include)
 add_library(gateway_lib STATIC
   src/config.cpp
   src/gateway_node.cpp
-  src/rest_server.cpp
   src/discovery_manager.cpp
   src/ros2_cli_wrapper.cpp
   src/output_parser.cpp
@@ -108,6 +111,18 @@ add_library(gateway_lib STATIC
   src/operation_manager.cpp
   src/configuration_manager.cpp
   src/fault_manager.cpp
+  # HTTP module (subfolder)
+  src/http/http_server.cpp
+  src/http/rest_server.cpp
+  # HTTP handlers (subfolder)
+  src/http/handlers/handler_context.cpp
+  src/http/handlers/health_handlers.cpp
+  src/http/handlers/area_handlers.cpp
+  src/http/handlers/component_handlers.cpp
+  src/http/handlers/operation_handlers.cpp
+  src/http/handlers/config_handlers.cpp
+  src/http/handlers/fault_handlers.cpp
+  src/http/handlers/auth_handlers.cpp
   # Auth module (subfolder)
   src/auth/auth_config.cpp
   src/auth/auth_models.cpp
@@ -162,7 +177,7 @@ install(DIRECTORY launch config
 )
 
 # Install scripts with execute permissions explicitly set
-install(PROGRAMS scripts/get_type_schema.py
+install(PROGRAMS scripts/get_type_schema.py scripts/generate_dev_certs.sh
   DESTINATION share/${PROJECT_NAME}/scripts
 )
 
@@ -182,11 +197,22 @@ if(BUILD_TESTING)
   # Exclude linters that don't work well with FetchContent dependencies:
   # - uncrustify/cpplint: conflicts with clang-format
   # - copyright/lint_cmake: flags generated/fetched files in install/
+  # - clang_tidy: we configure it manually below with increased timeout
   list(APPEND AMENT_LINT_AUTO_EXCLUDE
     ament_cmake_uncrustify
     ament_cmake_cpplint
+    ament_cmake_clang_tidy
   )
   ament_lint_auto_find_test_dependencies()
+
+  # Configure clang-tidy manually with increased timeout (600s instead of default 300s)
+  # This is needed because the project has many files and clang-tidy analysis takes time
+  ament_clang_tidy(
+    "${CMAKE_CURRENT_BINARY_DIR}"
+    CONFIG_FILE "${ament_cmake_clang_tidy_CONFIG_FILE}"
+    HEADER_FILTER "${ament_cmake_clang_tidy_HEADER_FILTER}"
+    TIMEOUT 600
+  )
 
   # Add GTest
   find_package(ament_cmake_gtest REQUIRED)
@@ -214,6 +240,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_discovery_manager gateway_lib)
   ament_target_dependencies(test_discovery_manager std_msgs)
 
+  # Add TLS configuration tests
+  ament_add_gtest(test_tls_config test/test_tls_config.cpp)
+  target_link_libraries(test_tls_config gateway_lib)
+
   # Apply coverage flags to test targets
   if(ENABLE_COVERAGE)
     target_compile_options(test_gateway_node PRIVATE --coverage -O0 -g)
@@ -228,6 +258,8 @@ if(BUILD_TESTING)
     target_link_options(test_native_topic_sampler PRIVATE --coverage)
     target_compile_options(test_discovery_manager PRIVATE --coverage -O0 -g)
     target_link_options(test_discovery_manager PRIVATE --coverage)
+    target_compile_options(test_tls_config PRIVATE --coverage -O0 -g)
+    target_link_options(test_tls_config PRIVATE --coverage)
   endif()
 
   # Integration testing
@@ -257,6 +289,13 @@ if(BUILD_TESTING)
   add_launch_test(
     test/test_auth.test.py
     TARGET test_auth
+    TIMEOUT 120
+  )
+
+  # Add TLS/HTTPS integration tests
+  add_launch_test(
+    test/test_tls.test.py
+    TARGET test_tls
     TIMEOUT 120
   )
 

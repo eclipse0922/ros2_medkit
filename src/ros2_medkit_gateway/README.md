@@ -735,6 +735,11 @@ ros2 run ros2_medkit_gateway gateway_node
 ros2 launch ros2_medkit_gateway gateway.launch.py
 ```
 
+**Start with HTTPS (auto-generates development certificates):**
+```bash
+ros2 launch ros2_medkit_gateway gateway_https.launch.py
+```
+
 **Start demo nodes:**
 ```bash
 ros2 launch ros2_medkit_gateway demo_nodes.launch.py
@@ -742,7 +747,11 @@ ros2 launch ros2_medkit_gateway demo_nodes.launch.py
 
 **Test the API:**
 ```bash
+# HTTP
 curl http://localhost:8080/api/v1/areas
+
+# HTTPS (skip certificate verification for self-signed)
+curl -k https://localhost:8443/api/v1/areas
 ```
 
 ## Configuration
@@ -797,6 +806,20 @@ JWT-based authentication with Role-Based Access Control (RBAC). Authentication i
 | `auth.require_auth_for`             | string   | `write`               | Auth requirement: `none`, `write` (POST/PUT/DELETE only), or `all`.        |
 | `auth.issuer`                       | string   | `ros2_medkit_gateway` | JWT issuer claim for token validation.                                     |
 | `auth.clients`                      | string[] | `[]`                  | Client credentials in format `client_id:client_secret:role`.               |
+
+#### TLS/HTTPS Configuration
+
+TLS (Transport Layer Security) enables encrypted HTTPS communication. TLS is **disabled by default** for backward compatibility.
+
+| Parameter                    | Type   | Default | Description                                                                 |
+| ---------------------------- | ------ | ------- | --------------------------------------------------------------------------- |
+| `server.tls.enabled`         | bool   | `false` | Enable/disable TLS. When enabled, server uses HTTPS instead of HTTP.       |
+| `server.tls.cert_file`       | string | (required if enabled) | Path to PEM-encoded certificate file.                         |
+| `server.tls.key_file`        | string | (required if enabled) | Path to PEM-encoded private key file.                         |
+| `server.tls.ca_file`         | string | `""`    | Optional CA certificate (reserved for future mutual TLS support).          |
+| `server.tls.min_version`     | string | `"1.2"` | Minimum TLS version: `"1.2"` (compatible) or `"1.3"` (more secure).        |
+
+> **Note:** Mutual TLS (client certificate verification) is planned for a future release.
 
 **Roles and Permissions:**
 
@@ -898,6 +921,109 @@ curl -X PUT http://localhost:8080/api/v1/components/temp_sensor/configurations/r
 > - Use environment variables or secure secret management in production
 > - RS256 algorithm requires additional setup with public/private key files
 > - Client secrets should be generated using cryptographically secure random strings
+
+### TLS/HTTPS Configuration Examples
+
+**Generate development certificates:**
+
+The package includes a helper script to generate self-signed certificates for development:
+
+```bash
+# Generate certificates in a certs/ directory
+./scripts/generate_dev_certs.sh ./certs
+
+# This creates:
+# ./certs/ca.crt           - CA certificate
+# ./certs/server.crt       - Server certificate
+# ./certs/server.key       - Server private key (chmod 600)
+# ./certs/client.crt       - Client certificate (for future mutual TLS)
+# ./certs/client.key       - Client private key
+```
+
+**Basic TLS (HTTPS only):**
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 8443
+  tls:
+    enabled: true
+    cert_file: "/path/to/server.crt"
+    key_file: "/path/to/server.key"
+    min_version: "1.2"
+```
+
+**TLS with minimum TLS 1.3 (recommended for new deployments):**
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 8443
+  tls:
+    enabled: true
+    cert_file: "/path/to/server.crt"
+    key_file: "/path/to/server.key"
+    min_version: "1.3"
+```
+
+<!-- TODO: Add Mutual TLS example when implemented
+**Mutual TLS (client certificate verification):**
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 8443
+  tls:
+    enabled: true
+    cert_file: "/path/to/server.crt"
+    key_file: "/path/to/server.key"
+    ca_file: "/path/to/ca.crt"
+    min_version: "1.2"
+    mutual_tls: true
+```
+-->
+
+**Quick start with HTTPS (auto-generates development certificates):**
+```bash
+# Start gateway with HTTPS - certificates are generated automatically
+ros2 launch ros2_medkit_gateway gateway_https.launch.py
+
+# Custom port
+ros2 launch ros2_medkit_gateway gateway_https.launch.py server_port:=9443
+
+# Persist certificates to custom directory
+ros2 launch ros2_medkit_gateway gateway_https.launch.py cert_dir:=/home/user/certs
+
+# Use TLS 1.3 only
+ros2 launch ros2_medkit_gateway gateway_https.launch.py min_tls_version:=1.3
+```
+
+| Launch Argument       | Default                    | Description                                      |
+| --------------------- | -------------------------- | ------------------------------------------------ |
+| `cert_dir`            | `/tmp/ros2_medkit_certs`   | Directory for auto-generated certificates        |
+| `server_host`         | `127.0.0.1`                | Host to bind HTTPS server                        |
+| `server_port`         | `8443`                     | Port for HTTPS API                               |
+| `min_tls_version`     | `1.2`                      | Minimum TLS version (`1.2` or `1.3`)             |
+| `refresh_interval_ms` | `2000`                     | Cache refresh interval in milliseconds           |
+
+**Usage with curl (self-signed certs):**
+```bash
+# Basic HTTPS (skip verification for self-signed)
+curl -k https://localhost:8443/api/v1
+
+# HTTPS with CA verification
+curl --cacert ./certs/ca.crt https://localhost:8443/api/v1
+
+# TODO: Mutual TLS example - coming in future release
+# curl --cacert ./certs/ca.crt \
+#      --cert ./certs/client.crt \
+#      --key ./certs/client.key \
+#      https://localhost:8443/api/v1/areas
+```
+
+> ⚠️ **Security Notes:**
+> - **Never use self-signed certificates in production** - obtain certificates from a trusted CA
+> - Protect private key files with restricted permissions: `chmod 600 server.key`
+> - Use TLS 1.3 minimum version when all clients support it
+> - Consider using Let's Encrypt for automated certificate management
+> - Store certificates outside the source tree and never commit private keys
 
 ## Architecture
 
