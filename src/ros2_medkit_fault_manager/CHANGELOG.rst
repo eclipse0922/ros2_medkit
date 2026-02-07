@@ -2,8 +2,8 @@
 Changelog for package ros2_medkit_fault_manager
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2026-02-07)
+------------------
 * Initial rosdistro release
 * Central fault management node with ROS 2 services:
 

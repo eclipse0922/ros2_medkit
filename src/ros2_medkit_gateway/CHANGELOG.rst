@@ -2,8 +2,8 @@
 Changelog for package ros2_medkit_gateway
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2026-02-07)
+------------------
 * Initial rosdistro release
 * HTTP REST gateway for ros2_medkit diagnostics system
 * SOVD-compatible entity discovery with four entity types:

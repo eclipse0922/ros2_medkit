@@ -2,8 +2,8 @@
 Changelog for package ros2_medkit_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2026-02-07)
+------------------
 * Initial rosdistro release
 * Fault management messages:
 

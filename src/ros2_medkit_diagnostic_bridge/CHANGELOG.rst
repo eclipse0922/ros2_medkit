@@ -2,8 +2,8 @@
 Changelog for package ros2_medkit_diagnostic_bridge
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.2.0 (2026-02-07)
+------------------
 * Initial rosdistro release
 * Bridge node converting standard ROS 2 /diagnostics to FaultManager fault reports
 * Severity mapping:
