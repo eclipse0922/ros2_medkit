@@ -421,16 +421,14 @@ rclcpp::ParameterValue ConfigurationManager::json_to_parameter_value(const json 
 }
 
 void ConfigurationManager::cache_default_values(const std::string & node_name) {
-  // TODO(bburda): Consider releasing the lock during I/O operations (wait_for_service,
-  // list_parameters, get_parameters) to reduce thread contention. Current implementation
-  // holds the lock for the entire operation to prevent duplicate caching attempts.
-  // A future improvement could use std::once_flag per node or a separate synchronization mechanism.
-  std::lock_guard<std::mutex> lock(defaults_mutex_);
-
-  // Check if already cached
-  if (default_values_.find(node_name) != default_values_.end()) {
-    return;
+  // Check if already cached (quick check under lock)
+  {
+    std::lock_guard<std::mutex> lock(defaults_mutex_);
+    if (default_values_.find(node_name) != default_values_.end()) {
+      return;
+    }
   }
+  // Lock released — perform blocking I/O without holding defaults_mutex_
 
   RCLCPP_DEBUG(node_->get_logger(), "Caching default values for node: '%s'", node_name.c_str());
 
@@ -464,15 +462,20 @@ void ConfigurationManager::cache_default_values(const std::string & node_name) {
       }
     }
 
-    // Store as defaults
+    // Store as defaults (re-acquire lock, double-check to avoid overwriting concurrent cacher)
     std::map<std::string, rclcpp::Parameter> node_defaults;
     for (const auto & param : parameters) {
       node_defaults[param.get_name()] = param;
     }
-    default_values_[node_name] = std::move(node_defaults);
 
-    RCLCPP_DEBUG(node_->get_logger(), "Cached %zu default values for node: '%s'", default_values_[node_name].size(),
-                 node_name.c_str());
+    {
+      std::lock_guard<std::mutex> lock(defaults_mutex_);
+      if (default_values_.find(node_name) == default_values_.end()) {
+        default_values_[node_name] = std::move(node_defaults);
+        RCLCPP_DEBUG(node_->get_logger(), "Cached %zu default values for node: '%s'", default_values_[node_name].size(),
+                     node_name.c_str());
+      }
+    }
   } catch (const std::exception & e) {
     RCLCPP_ERROR(node_->get_logger(), "Failed to cache defaults for node '%s': %s", node_name.c_str(), e.what());
   }
@@ -486,29 +489,30 @@ ParameterResult ConfigurationManager::reset_parameter(const std::string & node_n
     // Ensure defaults are cached
     cache_default_values(node_name);
 
-    // Look up default value
-    // TODO(bburda): Consider copying needed data and releasing lock before wait_for_service
-    // to reduce thread contention during the blocking I/O operation.
-    std::lock_guard<std::mutex> lock(defaults_mutex_);
-    auto node_it = default_values_.find(node_name);
-    if (node_it == default_values_.end()) {
-      result.success = false;
-      result.error_message = "No default values cached for node: " + node_name;
-      result.error_code = ParameterErrorCode::NO_DEFAULTS_CACHED;
-      return result;
+    // Look up default value — copy under lock, then release before blocking I/O
+    rclcpp::Parameter default_param;
+    {
+      std::lock_guard<std::mutex> lock(defaults_mutex_);
+      auto node_it = default_values_.find(node_name);
+      if (node_it == default_values_.end()) {
+        result.success = false;
+        result.error_message = "No default values cached for node: " + node_name;
+        result.error_code = ParameterErrorCode::NO_DEFAULTS_CACHED;
+        return result;
+      }
+
+      auto param_it = node_it->second.find(param_name);
+      if (param_it == node_it->second.end()) {
+        result.success = false;
+        result.error_message = "No default value for parameter: " + param_name;
+        result.error_code = ParameterErrorCode::NOT_FOUND;
+        return result;
+      }
+
+      default_param = param_it->second;
     }
 
-    auto param_it = node_it->second.find(param_name);
-    if (param_it == node_it->second.end()) {
-      result.success = false;
-      result.error_message = "No default value for parameter: " + param_name;
-      result.error_code = ParameterErrorCode::NOT_FOUND;
-      return result;
-    }
-
-    const auto & default_param = param_it->second;
-
-    // Set parameter back to default value
+    // Lock released — perform blocking I/O without holding defaults_mutex_
     auto client = get_param_client(node_name);
     if (!client->wait_for_service(get_service_timeout())) {
       result.success = false;
@@ -554,30 +558,31 @@ ParameterResult ConfigurationManager::reset_all_parameters(const std::string & n
     // Ensure defaults are cached
     cache_default_values(node_name);
 
-    // Look up default values
-    // TODO(bburda): Consider copying params_to_reset and releasing lock before wait_for_service
-    // to reduce thread contention during the blocking I/O operation.
-    std::lock_guard<std::mutex> lock(defaults_mutex_);
-    auto node_it = default_values_.find(node_name);
-    if (node_it == default_values_.end()) {
-      result.success = false;
-      result.error_message = "No default values cached for node: " + node_name;
-      result.error_code = ParameterErrorCode::NO_DEFAULTS_CACHED;
-      return result;
+    // Look up default values — copy under lock, then release before blocking I/O
+    std::vector<rclcpp::Parameter> params_to_reset;
+    {
+      std::lock_guard<std::mutex> lock(defaults_mutex_);
+      auto node_it = default_values_.find(node_name);
+      if (node_it == default_values_.end()) {
+        result.success = false;
+        result.error_message = "No default values cached for node: " + node_name;
+        result.error_code = ParameterErrorCode::NO_DEFAULTS_CACHED;
+        return result;
+      }
+
+      params_to_reset.reserve(node_it->second.size());
+      for (const auto & [name, param] : node_it->second) {
+        params_to_reset.push_back(param);
+      }
     }
 
+    // Lock released — perform blocking I/O without holding defaults_mutex_
     auto client = get_param_client(node_name);
     if (!client->wait_for_service(get_service_timeout())) {
       result.success = false;
       result.error_message = "Parameter service not available for node: " + node_name;
       result.error_code = ParameterErrorCode::SERVICE_UNAVAILABLE;
       return result;
-    }
-
-    // Collect all default parameters
-    std::vector<rclcpp::Parameter> params_to_reset;
-    for (const auto & [name, param] : node_it->second) {
-      params_to_reset.push_back(param);
     }
 
     // Reset all parameters
