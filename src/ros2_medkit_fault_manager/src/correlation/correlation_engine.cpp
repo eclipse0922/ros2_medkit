@@ -162,8 +162,9 @@ ProcessClearResult CorrelationEngine::process_clear(const std::string & fault_co
             switch (rule.representative) {
               case Representative::FIRST:
               case Representative::HIGHEST_SEVERITY:
-                // For HIGHEST_SEVERITY, individual severities are not stored;
-                // fall back to first remaining fault
+                // TODO(#213): HIGHEST_SEVERITY reassignment is approximate —
+                // PendingCluster lacks per-fault severity, so we fall back to
+                // first remaining fault. Store severities to fix.
                 pending_cluster.representative_code = codes.front();
                 break;
               case Representative::MOST_RECENT:
