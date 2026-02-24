@@ -366,6 +366,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_update_manager test/test_update_manager.cpp)
   target_link_libraries(test_update_manager gateway_lib)
 
+  # Add data handler tests
+  ament_add_gtest(test_data_handlers test/test_data_handlers.cpp)
+  target_link_libraries(test_data_handlers gateway_lib)
+
   # Add health handler tests
   ament_add_gtest(test_health_handlers test/test_health_handlers.cpp)
   target_link_libraries(test_health_handlers gateway_lib)
@@ -412,6 +416,7 @@ if(BUILD_TESTING)
       test_subscription_manager
       test_cyclic_subscription_handlers
       test_update_manager
+      test_data_handlers
       test_health_handlers
     )
     foreach(_target ${_test_targets})
