@@ -33,9 +33,8 @@ using ros2_medkit_gateway::handlers::HandlerContext;
 // - handle_list_data/handle_get_data_item/handle_put_data_item check req.matches.size()
 //   before accessing ctx_.node(), so default-constructed requests (size 0) return 400 first
 
-class DataHandlersTest : public ::testing::Test
-{
-protected:
+class DataHandlersTest : public ::testing::Test {
+ protected:
   CorsConfig cors_{};
   AuthConfig auth_{};
   TlsConfig tls_{};
@@ -48,8 +47,7 @@ protected:
 // ============================================================================
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataCategoriesReturns501)
-{
+TEST_F(DataHandlersTest, DataCategoriesReturns501) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_categories(req, res);
@@ -57,8 +55,7 @@ TEST_F(DataHandlersTest, DataCategoriesReturns501)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataCategoriesResponseBodyIsValidJson)
-{
+TEST_F(DataHandlersTest, DataCategoriesResponseBodyIsValidJson) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_categories(req, res);
@@ -66,8 +63,7 @@ TEST_F(DataHandlersTest, DataCategoriesResponseBodyIsValidJson)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataCategoriesErrorCodeIsNotImplemented)
-{
+TEST_F(DataHandlersTest, DataCategoriesErrorCodeIsNotImplemented) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_categories(req, res);
@@ -77,13 +73,22 @@ TEST_F(DataHandlersTest, DataCategoriesErrorCodeIsNotImplemented)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsMessage)
-{
+TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsMessage) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_categories(req, res);
   auto body = json::parse(res.body);
   EXPECT_TRUE(body.contains("message"));
+}
+
+// @verifies REQ_INTEROP_001
+TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsFeatureParameter) {
+  httplib::Request req;
+  httplib::Response res;
+  handlers_.handle_data_categories(req, res);
+  auto body = json::parse(res.body);
+  ASSERT_TRUE(body.contains("parameters"));
+  EXPECT_EQ(body["parameters"]["feature"], "data-categories");
 }
 
 // ============================================================================
@@ -91,8 +96,7 @@ TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsMessage)
 // ============================================================================
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataGroupsReturns501)
-{
+TEST_F(DataHandlersTest, DataGroupsReturns501) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_groups(req, res);
@@ -100,8 +104,7 @@ TEST_F(DataHandlersTest, DataGroupsReturns501)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataGroupsResponseBodyIsValidJson)
-{
+TEST_F(DataHandlersTest, DataGroupsResponseBodyIsValidJson) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_groups(req, res);
@@ -109,8 +112,7 @@ TEST_F(DataHandlersTest, DataGroupsResponseBodyIsValidJson)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataGroupsErrorCodeIsNotImplemented)
-{
+TEST_F(DataHandlersTest, DataGroupsErrorCodeIsNotImplemented) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_groups(req, res);
@@ -120,8 +122,7 @@ TEST_F(DataHandlersTest, DataGroupsErrorCodeIsNotImplemented)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsMessage)
-{
+TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsMessage) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_data_groups(req, res);
@@ -129,13 +130,22 @@ TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsMessage)
   EXPECT_TRUE(body.contains("message"));
 }
 
+// @verifies REQ_INTEROP_001
+TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsFeatureParameter) {
+  httplib::Request req;
+  httplib::Response res;
+  handlers_.handle_data_groups(req, res);
+  auto body = json::parse(res.body);
+  ASSERT_TRUE(body.contains("parameters"));
+  EXPECT_EQ(body["parameters"]["feature"], "data-groups");
+}
+
 // ============================================================================
 // Shared error response format — verify SOVD GenericError schema compliance
 // ============================================================================
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataCategoriesAndGroupsReturnSameErrorCode)
-{
+TEST_F(DataHandlersTest, DataCategoriesAndGroupsReturnSameErrorCode) {
   httplib::Request req;
   httplib::Response categories_res;
   httplib::Response groups_res;
@@ -155,8 +165,7 @@ TEST_F(DataHandlersTest, DataCategoriesAndGroupsReturnSameErrorCode)
 // ============================================================================
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, ListDataReturnsBadRequestWhenMatchesMissing)
-{
+TEST_F(DataHandlersTest, ListDataReturnsBadRequestWhenMatchesMissing) {
   // Default-constructed req has empty matches (size 0 < 2)
   httplib::Request req;
   httplib::Response res;
@@ -165,8 +174,7 @@ TEST_F(DataHandlersTest, ListDataReturnsBadRequestWhenMatchesMissing)
 }
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, ListDataBadRequestBodyContainsErrorCode)
-{
+TEST_F(DataHandlersTest, ListDataBadRequestBodyContainsErrorCode) {
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_list_data(req, res);
@@ -179,8 +187,7 @@ TEST_F(DataHandlersTest, ListDataBadRequestBodyContainsErrorCode)
 // ============================================================================
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, GetDataItemReturnsBadRequestWhenMatchesMissing)
-{
+TEST_F(DataHandlersTest, GetDataItemReturnsBadRequestWhenMatchesMissing) {
   // Default-constructed req has empty matches (size 0 < 3)
   httplib::Request req;
   httplib::Response res;
@@ -188,16 +195,35 @@ TEST_F(DataHandlersTest, GetDataItemReturnsBadRequestWhenMatchesMissing)
   EXPECT_EQ(res.status, 400);
 }
 
+// @verifies REQ_INTEROP_001
+TEST_F(DataHandlersTest, GetDataItemBadRequestBodyContainsInvalidRequestErrorCode) {
+  httplib::Request req;
+  httplib::Response res;
+  handlers_.handle_get_data_item(req, res);
+  auto body = json::parse(res.body);
+  ASSERT_TRUE(body.contains("error_code"));
+  EXPECT_EQ(body["error_code"], ros2_medkit_gateway::ERR_INVALID_REQUEST);
+}
+
 // ============================================================================
 // handle_put_data_item — returns 400 when route matches are missing
 // ============================================================================
 
 // @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, PutDataItemReturnsBadRequestWhenMatchesMissing)
-{
+TEST_F(DataHandlersTest, PutDataItemReturnsBadRequestWhenMatchesMissing) {
   // Default-constructed req has empty matches (size 0 < 3)
   httplib::Request req;
   httplib::Response res;
   handlers_.handle_put_data_item(req, res);
   EXPECT_EQ(res.status, 400);
+}
+
+// @verifies REQ_INTEROP_001
+TEST_F(DataHandlersTest, PutDataItemBadRequestBodyContainsInvalidRequestErrorCode) {
+  httplib::Request req;
+  httplib::Response res;
+  handlers_.handle_put_data_item(req, res);
+  auto body = json::parse(res.body);
+  ASSERT_TRUE(body.contains("error_code"));
+  EXPECT_EQ(body["error_code"], ros2_medkit_gateway::ERR_INVALID_REQUEST);
 }
