@@ -46,7 +46,7 @@ class DataHandlersTest : public ::testing::Test {
 // handle_data_categories — always returns 501 Not Implemented (ISO 17978-3 §7.9)
 // ============================================================================
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_016
 TEST_F(DataHandlersTest, DataCategoriesReturns501) {
   httplib::Request req;
   httplib::Response res;
@@ -54,7 +54,7 @@ TEST_F(DataHandlersTest, DataCategoriesReturns501) {
   EXPECT_EQ(res.status, 501);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_016
 TEST_F(DataHandlersTest, DataCategoriesResponseBodyIsValidJson) {
   httplib::Request req;
   httplib::Response res;
@@ -62,7 +62,7 @@ TEST_F(DataHandlersTest, DataCategoriesResponseBodyIsValidJson) {
   EXPECT_NO_THROW(json::parse(res.body));
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_016
 TEST_F(DataHandlersTest, DataCategoriesErrorCodeIsNotImplemented) {
   httplib::Request req;
   httplib::Response res;
@@ -72,7 +72,7 @@ TEST_F(DataHandlersTest, DataCategoriesErrorCodeIsNotImplemented) {
   EXPECT_EQ(body["error_code"], ros2_medkit_gateway::ERR_NOT_IMPLEMENTED);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_016
 TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsMessage) {
   httplib::Request req;
   httplib::Response res;
@@ -81,7 +81,7 @@ TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsMessage) {
   EXPECT_TRUE(body.contains("message"));
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_016
 TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsFeatureParameter) {
   httplib::Request req;
   httplib::Response res;
@@ -95,7 +95,7 @@ TEST_F(DataHandlersTest, DataCategoriesErrorBodyContainsFeatureParameter) {
 // handle_data_groups — always returns 501 Not Implemented (ISO 17978-3 §7.9)
 // ============================================================================
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_017
 TEST_F(DataHandlersTest, DataGroupsReturns501) {
   httplib::Request req;
   httplib::Response res;
@@ -103,7 +103,7 @@ TEST_F(DataHandlersTest, DataGroupsReturns501) {
   EXPECT_EQ(res.status, 501);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_017
 TEST_F(DataHandlersTest, DataGroupsResponseBodyIsValidJson) {
   httplib::Request req;
   httplib::Response res;
@@ -111,7 +111,7 @@ TEST_F(DataHandlersTest, DataGroupsResponseBodyIsValidJson) {
   EXPECT_NO_THROW(json::parse(res.body));
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_017
 TEST_F(DataHandlersTest, DataGroupsErrorCodeIsNotImplemented) {
   httplib::Request req;
   httplib::Response res;
@@ -121,7 +121,7 @@ TEST_F(DataHandlersTest, DataGroupsErrorCodeIsNotImplemented) {
   EXPECT_EQ(body["error_code"], ros2_medkit_gateway::ERR_NOT_IMPLEMENTED);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_017
 TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsMessage) {
   httplib::Request req;
   httplib::Response res;
@@ -130,7 +130,7 @@ TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsMessage) {
   EXPECT_TRUE(body.contains("message"));
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_017
 TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsFeatureParameter) {
   httplib::Request req;
   httplib::Response res;
@@ -141,30 +141,10 @@ TEST_F(DataHandlersTest, DataGroupsErrorBodyContainsFeatureParameter) {
 }
 
 // ============================================================================
-// Shared error response format — verify SOVD GenericError schema compliance
-// ============================================================================
-
-// @verifies REQ_INTEROP_001
-TEST_F(DataHandlersTest, DataCategoriesAndGroupsReturnSameErrorCode) {
-  httplib::Request req;
-  httplib::Response categories_res;
-  httplib::Response groups_res;
-
-  handlers_.handle_data_categories(req, categories_res);
-  handlers_.handle_data_groups(req, groups_res);
-
-  auto categories_body = json::parse(categories_res.body);
-  auto groups_body = json::parse(groups_res.body);
-
-  EXPECT_EQ(categories_body["error_code"], groups_body["error_code"]);
-  EXPECT_EQ(categories_res.status, groups_res.status);
-}
-
-// ============================================================================
 // handle_list_data — returns 400 when route matches are missing
 // ============================================================================
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_018
 TEST_F(DataHandlersTest, ListDataReturnsBadRequestWhenMatchesMissing) {
   // Default-constructed req has empty matches (size 0 < 2)
   httplib::Request req;
@@ -173,7 +153,7 @@ TEST_F(DataHandlersTest, ListDataReturnsBadRequestWhenMatchesMissing) {
   EXPECT_EQ(res.status, 400);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_018
 TEST_F(DataHandlersTest, ListDataBadRequestBodyContainsErrorCode) {
   httplib::Request req;
   httplib::Response res;
@@ -186,7 +166,7 @@ TEST_F(DataHandlersTest, ListDataBadRequestBodyContainsErrorCode) {
 // handle_get_data_item — returns 400 when route matches are missing
 // ============================================================================
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_019
 TEST_F(DataHandlersTest, GetDataItemReturnsBadRequestWhenMatchesMissing) {
   // Default-constructed req has empty matches (size 0 < 3)
   httplib::Request req;
@@ -195,7 +175,7 @@ TEST_F(DataHandlersTest, GetDataItemReturnsBadRequestWhenMatchesMissing) {
   EXPECT_EQ(res.status, 400);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_019
 TEST_F(DataHandlersTest, GetDataItemBadRequestBodyContainsInvalidRequestErrorCode) {
   httplib::Request req;
   httplib::Response res;
@@ -209,7 +189,7 @@ TEST_F(DataHandlersTest, GetDataItemBadRequestBodyContainsInvalidRequestErrorCod
 // handle_put_data_item — returns 400 when route matches are missing
 // ============================================================================
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_020
 TEST_F(DataHandlersTest, PutDataItemReturnsBadRequestWhenMatchesMissing) {
   // Default-constructed req has empty matches (size 0 < 3)
   httplib::Request req;
@@ -218,7 +198,7 @@ TEST_F(DataHandlersTest, PutDataItemReturnsBadRequestWhenMatchesMissing) {
   EXPECT_EQ(res.status, 400);
 }
 
-// @verifies REQ_INTEROP_001
+// @verifies REQ_INTEROP_020
 TEST_F(DataHandlersTest, PutDataItemBadRequestBodyContainsInvalidRequestErrorCode) {
   httplib::Request req;
   httplib::Response res;
